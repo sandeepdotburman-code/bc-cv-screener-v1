@@ -1,0 +1,451 @@
+version: "1.4"
+# Changes in v1.4:
+# 1. Graduation cutoff — replaced hardcoded 'May 2026' with dynamic Screening Date reference
+# 2. Content filters — added pass/fail examples to Identity/Activity and External-Facing filters (Fresher and Experienced)
+# 3. All instances of 'post-graduation full-time' — replaced with 'after graduation full-time' to avoid confusion with PG degree terminology
+# 4. Duplicate CV handling — added detection rule using name + email as unique identifier
+
+role: Production Coordinator
+company: Brown Collab
+round: 0
+description: >
+  Round 0 CV screening rubric for the Production Coordinator role at Brown Collab.
+  The PC owns end-to-end production timeline management — coordinating writers,
+  vendors, and editors across time zones to ensure on-time delivery.
+  It is a coordination and follow-up role, not a creative or technical one.
+last_updated: May 2026
+owner: Navdeep
+
+# ─────────────────────────────────────────────
+# SCREENING DATE
+# ─────────────────────────────────────────────
+screening_date:
+  required: true
+  format: "Month Year"
+  example: "May 2026"
+  if_missing_output: "Screening Date not provided — please state Screening Date before proceeding."
+  instruction: >
+    Navdeep must state the Screening Date at the start of each session.
+    Do not process any CVs until Screening Date is confirmed.
+
+# ─────────────────────────────────────────────
+# EXPERIENCE BANDS
+# ─────────────────────────────────────────────
+experience_bands:
+  - label: "Fresher"
+    months_min: 0
+    months_max: 0
+    guide: "Fresher"
+
+  - label: "Exp Band #1"
+    months_min: 1
+    months_max: 12
+    guide: "Experienced"
+
+  - label: "Exp Band #2"
+    months_min: 13
+    months_max: 18
+    guide: "Experienced"
+
+  - label: "Eliminate"
+    months_min: 19
+    months_max: null
+    guide: null
+    action: eliminate
+
+# ─────────────────────────────────────────────
+# EXPERIENCE CALCULATION RULES
+# ─────────────────────────────────────────────
+experience_calculation:
+  formula: "Months = ((Screening Year - Graduation Year) * 12) + (Screening Month - Graduation Month)"
+  rules:
+    - "A degree in progress does not count as graduated."
+    - "Count all roles listed after graduation date only."
+    - "For roles still ongoing (e.g. 'present'), count to Screening Date."
+    - "For completed roles, count from start month/year to end month/year and sum all after-graduation roles."
+    - "Do not estimate. Do not round up. Do not infer missing information."
+    - "Internships during college years: count total months as a separate figure. Record in Internship/Part-time column in Output 2. Do not add to the experience band calculation."
+
+  output_format: "[X months] (Band)"
+  output_examples:
+    - "8 months (Exp Band #1)"
+    - "0 months (Fresher)"
+    - "15 months (Exp Band #2)"
+    - "22 months (Eliminate)"
+
+  ambiguous_date_strings:
+    graduation_date_absent: "Band unclear — graduation date missing"
+    graduation_year_only: "Band unclear — year-only graduation date ([year found] e.g. 2025)"
+    role_year_only: "Band unclear — year-only dates on [role name] ([years found] e.g. 2023–2024)"
+    role_no_dates: "Band unclear — no dates on [role name]"
+    multiple_ambiguities: "List all ambiguities separated by semicolons e.g. Band unclear — year-only graduation date (2025); year-only dates on [role] (2023–2024)"
+
+  band_unclear_handling:
+    decision: "FLAG"
+    write_to_cv_pass_fail_tab: true
+    write_to_round0_tab: false
+    include_in_pass_count: false
+    apply_content_filters: "Apply all filters that can be evaluated. Leave blank only for filters that cannot be evaluated due to missing content."
+
+# ─────────────────────────────────────────────
+# FILE HANDLING
+# ─────────────────────────────────────────────
+file_handling:
+  accepted_formats:
+    - PDF
+    - DOCX
+    - JPEG
+
+  extraction_rules:
+    DOCX: "Extract and read full document text before beginning any classification. If full text cannot be extracted, flag as unreadable."
+    PDF: "Extract text layer. If no text layer exists (scanned PDF), flag as unreadable."
+    JPEG: "No text extraction possible. Flag immediately as unreadable."
+
+  unreadable_handling:
+    decision: "FLAG — file unreadable"
+    reason_format: "[filename] — [format e.g. JPEG] — no text extracted. Navdeep to process manually."
+    leave_filter_columns_blank: true
+    excellence_signal: "Leave blank"
+    write_to_round0_tab: false
+    counts_toward_batch: true
+
+# ─────────────────────────────────────────────
+# DUPLICATE CV HANDLING
+# ─────────────────────────────────────────────
+duplicate_handling:
+  instruction: >
+    Before screening any CV, check whether the candidate already exists in the current batch.
+    Use name + email as the unique identifier. Apply checks in order.
+
+  checks:
+    - condition: "Name AND email both match an already-screened candidate in this batch"
+      action: "FLAG as duplicate. Do not screen."
+      decision: "FLAG"
+      reason_format: "Duplicate — [full name] + [email] already screened in this batch."
+      write_to_round0_tab: false
+
+    - condition: "Name matches but email differs"
+      action: "Screen normally. Add a note in the Reason column flagging the name collision."
+      reason_format: "Name collision — same full name as [existing candidate] but different email. Screened as separate candidate."
+
+    - condition: "Name matches and email is absent from one or both CVs — fall back to name + phone"
+      action: "If name + phone both match, FLAG as duplicate. If phone also absent or differs, flag for manual check."
+      reason_format_duplicate: "Duplicate — [full name] + [phone] already screened in this batch. Email absent on one or both CVs."
+      reason_format_manual: "Possible duplicate — [full name] matches existing candidate but email and phone unavailable to confirm. Navdeep to check manually."
+
+# ─────────────────────────────────────────────
+# STEP 1 — PG DEGREE CHECK (ALWAYS FIRST)
+# ─────────────────────────────────────────────
+pg_degree_check:
+  step: 1
+  instruction: "Do this before calculating experience or applying any other filter."
+  pg_degree_types:
+    - MBA
+    - PGDM
+    - M.Com
+    - MA
+    - M.Tech
+    - MSc
+    - "or equivalent"
+  applies_to: "ongoing or completed"
+  if_found:
+    experience_band_output: "Eliminate — PG degree ([degree type])"
+    action: eliminate
+    leave_filter_columns_blank: true
+    stop: true
+    do_not_calculate_experience: true
+    do_not_apply_other_filters: true
+  if_not_found:
+    action: "Proceed to Step 2"
+
+# ─────────────────────────────────────────────
+# STEP 2 — EXPERIENCE CLASSIFICATION
+# ─────────────────────────────────────────────
+experience_classification:
+  step: 2
+  instruction: "Apply only if Step 1 passes (no PG degree found)."
+  reference: "See experience_calculation section above for formula and rules."
+
+# ─────────────────────────────────────────────
+# STEP 3 — ELIMINATION PRIORITY ORDER
+# ─────────────────────────────────────────────
+elimination_order:
+  step: 3
+  instruction: "Apply checks in this exact order. Stop and eliminate the moment any check fails."
+
+  checks:
+    - check: 1
+      name: "Graduation Date — Current Students"
+      rule: "Current students with expected graduation after the Screening Date = Eliminate immediately."
+      experience_band_output: "Eliminate (graduation [year])"
+      leave_filter_columns_blank: true
+
+    - check: 2
+      name: "Experience Band — Over Limit"
+      rule: "19+ months after graduation full-time experience = Eliminate."
+      experience_band_output: "[X months] (Eliminate)"
+      leave_filter_columns_blank: true
+
+    - check: 3
+      name: "Content Filters"
+      rule: "Apply only if Checks 1 and 2 both pass. Apply the correct filter set for the candidate's band."
+      reference: "See content_filters section below."
+
+  excellence_signal:
+    instruction: "Check for Excellence Signal before writing any row to the tracker. Apply to all candidates regardless of elimination status."
+    mark_if_present: "⭐"
+    mark_if_absent: "—"
+    applies_to: "eliminated, flagged, and passing candidates alike"
+    blank_only_if: "file is fully unreadable"
+
+# ─────────────────────────────────────────────
+# STEP 4 — CONTENT FILTERS BY BAND
+# ─────────────────────────────────────────────
+content_filters:
+  step: 4
+  general_rule: >
+    A filter passes only if explicit evidence is present on the CV.
+    If the criterion cannot be confirmed from what is written on the CV, mark FAIL.
+    Do not infer, assume, or give benefit of the doubt.
+
+  fresher:
+    applies_to: "0 months after graduation full-time experience"
+
+    filters:
+      - id: "F1"
+        name: "Identity / Activity"
+        pass_condition: >
+          Must show explicit evidence of coordination, ops, or people-management activity
+          in any context — internship, college committee, event organisation, part-time ops work.
+        fail_condition: >
+          Pure creative or technical identity with zero coordination signals = FAIL.
+        pass_examples:
+          - "Coordinated logistics for a 200-person college fest — managed vendors, volunteers, and timeline"
+          - "Part-time ops assistant at a logistics startup — tracked shipments and followed up with suppliers"
+          - "College committee head responsible for scheduling, task assignments, and deadline tracking across 15 members"
+        fail_examples:
+          - "Graphic designer intern — created social media posts and brand collateral"
+          - "Freelance content writer — wrote articles and blog posts independently"
+          - "Web developer intern — built and maintained company website"
+
+      - id: "F2"
+        name: "Experience"
+        pass_condition: "Must be 0 months after graduation full-time."
+        fail_condition: "1+ months after graduation full-time experience = reclassify, do not fail immediately."
+        reclassification:
+          rule: "If calculation returns 1+ months: reclassify to Exp Band #1 and apply Exp Band #1 filters."
+          limit: "Reclassification happens once only."
+          if_reclassification_also_fails: "Eliminate. Do not reclassify again."
+
+      - id: "F3"
+        name: "External-Facing"
+        pass_condition: >
+          Must show explicit evidence of managing external parties or multiple stakeholders —
+          vendors, teams, clients, event attendees — in any context.
+        fail_condition: "Purely solo academic work with no stakeholder management = FAIL."
+        pass_examples:
+          - "Coordinated with 8 external vendors for college cultural fest — negotiated timelines and followed up on deliverables"
+          - "Client-facing intern at an agency — attended client calls and tracked feedback"
+          - "Managed registrations and communications for 300+ event attendees"
+        fail_examples:
+          - "Completed individual research project and submitted dissertation"
+          - "Developed a mobile app as final year project — solo work"
+          - "Studied abroad — coursework only, no team or external stakeholder involvement"
+
+      - id: "F4"
+        name: "CV Quality"
+        pass_condition: "Well-written, organised, no more than 3 spelling or grammar errors, no significant structural problems."
+        fail_condition: "More than 3 errors or significant structural problems (missing sections, unreadable formatting) = FAIL."
+
+  experienced:
+    applies_to: "Exp Band #1 (1–12 months) and Exp Band #2 (13–18 months)"
+
+    filters:
+      - id: "E1"
+        name: "Role Title / Identity"
+        pass_condition: >
+          Primary title must reflect coordination or ops identity:
+          coordinator, operations, production, executive (ops context),
+          project management, planning, client servicing, account management,
+          MIS, or dispatch/logistics.
+          Check whether bullet points describe coordination work or creative/technical output.
+        fail_condition: >
+          Creative or technical primary identity = FAIL, even if 'coordinator' appears in the title.
+        pass_examples:
+          - "Production Coordinator — tracked deadlines, followed up with vendors, updated project tracker daily"
+          - "Operations Executive — managed client deliverables, coordinated with freelancers, maintained status sheets"
+          - "Client Servicing Associate — single point of contact for 3 clients, managed briefs and timelines end to end"
+        fail_examples:
+          - "Content Coordinator — primary work was writing and editing content, coordination incidental"
+          - "Creative Coordinator — designed campaigns and managed creative output, no ops or vendor work"
+          - "Tech Coordinator — managed software deployments and developer timelines, purely internal and technical"
+
+      - id: "E2"
+        name: "Experience"
+        pass_condition: "1–18 months after graduation full-time experience."
+        reclassification:
+          rule: "If calculation returns 0 months: reclassify to Fresher and apply Fresher filters."
+          limit: "Reclassification happens once only."
+          if_reclassification_also_fails: "Eliminate. Do not reclassify again."
+        fail_condition: "19+ months = Eliminate."
+
+      - id: "E3"
+        name: "External-Facing"
+        pass_condition: "Must show explicit evidence of working with external parties — vendors, clients, or freelancers."
+        fail_condition: "Internal-only experience = FAIL."
+        pass_examples:
+          - "Coordinated with 12 freelance translators across 4 countries — managed briefs, deadlines, and quality reviews"
+          - "Primary contact for 5 client accounts — managed briefs, approvals, and delivery timelines"
+          - "Vendor coordination for production team — sourced, onboarded, and managed 20+ external contributors"
+        fail_examples:
+          - "Coordinated between internal marketing and design teams only — no external party involvement"
+          - "Project tracker management for internal dev team — purely internal workflow"
+          - "HR operations coordinator — managed internal hiring and onboarding processes only"
+
+      - id: "E4"
+        name: "CV Quality"
+        pass_condition: "Well-written, organised, no more than 3 spelling or grammar errors, no significant structural problems."
+        fail_condition: "More than 3 errors or significant structural problems = FAIL."
+
+# ─────────────────────────────────────────────
+# EXCELLENCE SIGNAL
+# ─────────────────────────────────────────────
+excellence_signal:
+  description: "Flag if CV shows high achievement in any field — academic topper, competitive sport, significant extracurricular recognition."
+  effect: "Not a filter. Elevates borderline candidates."
+  mark: "⭐"
+  applies_to: "All candidates including eliminated and flagged."
+
+# ─────────────────────────────────────────────
+# OUTPUT 1 — CV PASS-FAIL TAB
+# ─────────────────────────────────────────────
+output_cv_pass_fail:
+  tab: "CV Pass-Fail"
+  includes: "All candidates — pass, fail, and flagged"
+  one_row_per_candidate: true
+
+  columns:
+    - name: "Candidate"
+      value: "Full name as it appears on the CV"
+
+    - name: "CV Format"
+      value: "PDF / DOCX / JPEG / Other"
+
+    - name: "Experience Band"
+      value: "Band string per classification rules"
+      examples:
+        - "8 months (Exp Band #1)"
+        - "0 months (Fresher)"
+        - "15 months (Exp Band #2)"
+        - "22 months (Eliminate)"
+        - "Eliminate (graduation 2027)"
+        - "Eliminate — PG degree (MBA)"
+        - "Band unclear — graduation date missing"
+        - "Band unclear — year-only graduation date (2025)"
+        - "Band unclear — year-only dates on [role name] (2023–2024)"
+
+    - name: "Experience (Pass/Fail)"
+      value: "✅ if Fresher / Exp Band #1 / Exp Band #2. ❌ if Eliminate. N/A if band unclear."
+
+    - name: "Identity/Activity"
+      value: "✅ or ❌"
+      blank_if: "Eliminated at Checks 1–2 or file fully unreadable"
+
+    - name: "External-Facing"
+      value: "✅ or ❌"
+      blank_if: "Eliminated at Checks 1–2 or file fully unreadable"
+
+    - name: "CV Quality"
+      value: "✅ or ❌"
+      blank_if: "Eliminated at Checks 1–2 or file fully unreadable"
+
+    - name: "Excellence Signal"
+      value: "⭐ if present. — if not."
+      blank_if: "File fully unreadable only"
+
+    - name: "Decision"
+      value: "PASS, FAIL, or FLAG"
+
+    - name: "Reason"
+      value: >
+        Leave blank for clean passes and straightforward eliminations.
+        One line only for FLAG and non-obvious FAIL — state the specific filter or rule only, no explanation.
+        For band-unclear candidates, list all ambiguities including years found.
+
+    - name: "AI Mistakes"
+      value: "Leave blank. Do not write to this column."
+
+# ─────────────────────────────────────────────
+# OUTPUT 2 — ROUND 0 TAB
+# ─────────────────────────────────────────────
+output_round0:
+  tab: "Round 0"
+  includes: "Passed candidates only"
+  one_row_per_candidate: true
+  note: "Do not write rows for failed, eliminated, or flagged candidates. Write N/A for any field not present on the CV."
+
+  columns:
+    - name: "Name"
+      value: "Full name"
+
+    - name: "CV"
+      value: "Y"
+
+    - name: "Experience"
+      value: "Months + band e.g. 8 months (Exp Band #1)"
+
+    - name: "Internship/Part-time"
+      value: "Duration and context of college-era internships and part-time roles. N/A if none."
+
+    - name: "Current Role"
+      value: "Most recent role title"
+
+    - name: "Industry"
+      value: "Industry of most recent role"
+
+    - name: "Key Skills"
+      value: "Skills listed on CV relevant to coordination or ops"
+
+    - name: "Current Location"
+      value: "City / state as stated on CV"
+
+    - name: "DOB"
+      value: "As stated on CV. N/A if not present."
+
+    - name: "UG Grad Year"
+      value: "Year only"
+
+    - name: "PG Grad Year"
+      value: "Year only. N/A if no PG degree."
+
+    - name: "Email"
+      value: "As stated on CV"
+
+    - name: "Phone"
+      value: "As stated on CV"
+
+    - name: "Summary"
+      value: "2–3 sentences: candidate's background, relevant experience, and coordination context"
+
+    - name: "Round 0 - Pass/Fail"
+      value: "PASS"
+
+  round1_round2_columns: "Leave blank at this stage. Do not write to them."
+
+# ─────────────────────────────────────────────
+# GUARDRAILS
+# ─────────────────────────────────────────────
+guardrails:
+  - "Never invent or infer candidate information not explicitly present on the CV. If a field is not stated, write N/A."
+  - "If a filter criterion cannot be confirmed from the CV, mark FAIL. Do not give benefit of the doubt."
+  - "Never guess an experience band. If ambiguous, output the exact ambiguity string and flag."
+  - "Never apply Fresher filters to an Exp Band #1 or Exp Band #2 candidate, or vice versa."
+  - "Never reclassify a candidate's band more than once."
+  - "Never continue to content filters if any of Checks 1–2 fails."
+  - "Never write to the AI Mistakes column."
+  - "Never write flagged or band-unclear candidates to the Round 0 tab."
+  - "Always check Excellence Signal for every candidate, including eliminated and flagged. Blank only if file is fully unreadable."
+  - "Always extract full file text before beginning any classification. Never classify from partial content."
+  - "Always check for PG degree (Step 1) before calculating experience or applying any other filter."
+  - "Always apply checks in elimination priority order (Check 1 → Check 2 → Check 3). Stop at first failure."
+  - "Always check for duplicate CVs before screening. Use name + email as unique identifier. Follow duplicate handling rules."
