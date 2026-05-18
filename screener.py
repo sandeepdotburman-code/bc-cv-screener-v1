@@ -67,13 +67,24 @@ Screen this CV against the rubric. Return ONLY a JSON object with exactly these 
   "cv_quality": "✅ or ❌ or blank",
   "excellence_signal": "⭐ or —",
   "decision": "PASS or FAIL or FLAG",
-  "reason": "one line only for FLAG and non-obvious FAIL, blank otherwise"
+  "reason": "one line only for FLAG and non-obvious FAIL, blank otherwise",
+  "current_role": "current job title and company, or N/A if not found",
+  "industry": "industry or sector, or N/A if not found",
+  "key_skills": "comma-separated list of key skills, or N/A if not found",
+  "current_location": "city and country, or N/A if not found",
+  "dob": "date of birth as DD/MM/YYYY or YYYY, or N/A if not found",
+  "ug_grad_year": "undergraduate graduation year as YYYY, or N/A if not found",
+  "pg_grad_year": "postgraduate graduation year as YYYY, or N/A if not found",
+  "email": "email address, or N/A if not found",
+  "phone": "phone number, or N/A if not found",
+  "internship_part_time": "yes/no and brief description if mentioned, or N/A if not found",
+  "summary": "2-3 sentence professional summary of the candidate"
 }}"""
 
     try:
         message = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=1000,
+            max_tokens=2000,
             messages=[
                 {"role": "user", "content": user_message}
             ],
@@ -104,6 +115,17 @@ Screen this CV against the rubric. Return ONLY a JSON object with exactly these 
             'excellence_signal': '',
             'decision': 'FLAG',
             'reason': f'Claude response could not be parsed — {str(e)}. Navdeep to review manually.',
+            'current_role': '',
+            'industry': '',
+            'key_skills': '',
+            'current_location': '',
+            'dob': '',
+            'ug_grad_year': '',
+            'pg_grad_year': '',
+            'email': '',
+            'phone': '',
+            'internship_part_time': '',
+            'summary': '',
             'raw_response': raw if 'raw' in dir() else ''
         }
 
@@ -118,5 +140,16 @@ Screen this CV against the rubric. Return ONLY a JSON object with exactly these 
             'excellence_signal': '',
             'decision': 'FLAG',
             'reason': f'API call failed — {str(e)}. Navdeep to review manually.',
+            'current_role': '',
+            'industry': '',
+            'key_skills': '',
+            'current_location': '',
+            'dob': '',
+            'ug_grad_year': '',
+            'pg_grad_year': '',
+            'email': '',
+            'phone': '',
+            'internship_part_time': '',
+            'summary': '',
             'raw_response': ''
         }

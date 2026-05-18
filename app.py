@@ -269,21 +269,20 @@ if run and uploaded_files:
 
                 if decision == "PASS":
                     r0_row = {
-                        "Name":                       result.get("candidate", cv_name),
-                        "CV (Y/N)":                   "Y",
-                        "Experience (months + band)":  result.get("experience_band", ""),
-                        "Internship/Part-time":        "N/A",
-                        "Current Role":                "N/A",
-                        "Industry":                    "N/A",
-                        "Key Skills":                  "N/A",
-                        "Current Location":            "N/A",
-                        "DOB":                         "N/A",
-                        "UG Grad Year":                "N/A",
-                        "PG Grad Year":                "N/A",
-                        "Email":                       "N/A",
-                        "Phone":                       "N/A",
-                        "Summary":                     "N/A",
-                        "Round 0 Pass/Fail":           "PASS",
+                        "candidate":            result.get("candidate", cv_name),
+                        "experience_band":      result.get("experience_band", ""),
+                        "internship_part_time": result.get("internship_part_time", "N/A"),
+                        "current_role":         result.get("current_role", "N/A"),
+                        "industry":             result.get("industry", "N/A"),
+                        "key_skills":           result.get("key_skills", "N/A"),
+                        "current_location":     result.get("current_location", "N/A"),
+                        "dob":                  result.get("dob", "N/A"),
+                        "ug_grad_year":         result.get("ug_grad_year", "N/A"),
+                        "pg_grad_year":         result.get("pg_grad_year", "N/A"),
+                        "email":                result.get("email", "N/A"),
+                        "phone":                result.get("phone", "N/A"),
+                        "summary":              result.get("summary", "N/A"),
+                        "decision":             "PASS",
                     }
                     passed_r0_rows.append(r0_row)
 

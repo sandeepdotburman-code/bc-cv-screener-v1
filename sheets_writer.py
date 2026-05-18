@@ -14,7 +14,18 @@ import streamlit as st
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-SHEET_ID = "10jW5bqKiR-4HxWHcCA6MjALOBnvyEaYQcCNxDE2S9nc"
+# Sheet IDs — test vs live
+SHEET_IDS = {
+    "test": "10jW5bqKiR-4HxWHcCA6MjALOBnvyEaYQcCNxDE2S9nc",  # BC PC Screener — Agent Test v1.0
+    "live": "LIVE_SHEET_ID_HERE",  # replace when live tracker is ready
+}
+
+def _get_sheet_id() -> str:
+    try:
+        env = st.secrets.get("ENV", "test")
+    except Exception:
+        env = "test"
+    return SHEET_IDS.get(env, SHEET_IDS["test"])
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -35,7 +46,7 @@ CV_PASS_FAIL_COLUMNS = [
     "Reason",
 ]
 
-# Round 0 tab — columns in tracker order
+# Round 0 tab — sheet column headers (in order)
 ROUND_0_COLUMNS = [
     "Name",
     "CV (Y/N)",
@@ -52,6 +63,25 @@ ROUND_0_COLUMNS = [
     "Phone",
     "Summary",
     "Round 0 Pass/Fail",
+]
+
+# Round 0 tab — screener dict keys, in the same column order as ROUND_0_COLUMNS
+ROUND_0_KEYS = [
+    "candidate",            # Name
+    "cv_yn",                # CV (Y/N)  — injected as "Y" at write time
+    "experience_band",      # Experience (months + band)
+    "internship_part_time", # Internship/Part-time
+    "current_role",         # Current Role
+    "industry",             # Industry
+    "key_skills",           # Key Skills
+    "current_location",     # Current Location
+    "dob",                  # DOB
+    "ug_grad_year",         # UG Grad Year
+    "pg_grad_year",         # PG Grad Year
+    "email",                # Email
+    "phone",                # Phone
+    "summary",              # Summary
+    "decision",             # Round 0 Pass/Fail
 ]
 
 
@@ -76,7 +106,7 @@ def _get_client() -> gspread.Client:
 def _get_sheet():
     """Return the authorised Spreadsheet object."""
     client = _get_client()
-    return client.open_by_key(SHEET_ID)
+    return client.open_by_key(_get_sheet_id())
 
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
@@ -97,13 +127,17 @@ def _append_rows(sheet, tab_name: str, rows: list[list], first_data_row: int) ->
     """
     ws = sheet.worksheet(tab_name)
 
-    # Find the next empty row at or below first_data_row
-    all_values = ws.get_all_values()
-    # all_values is 0-indexed; row index = sheet row - 1
-    next_row = max(first_data_row, len(all_values) + 1)
-
     if not rows:
         return 0
+
+    # Read column A only and scan downward from first_data_row for the first empty cell.
+    # get_all_values() includes trailing blank rows, so len()-based counting overshoots.
+    col_a = ws.col_values(1)  # 1-indexed; col_a[i] is sheet row i+1
+    next_row = first_data_row
+    for i in range(first_data_row - 1, len(col_a)):
+        if col_a[i].strip() == "":
+            break
+        next_row = i + 2  # advance past this occupied row
 
     # gspread range notation: A{next_row}
     start_cell = f"A{next_row}"
@@ -147,7 +181,7 @@ def write_round_0(candidates: list[dict]) -> dict:
     """
     try:
         sheet = _get_sheet()
-        rows = [_row_from_dict(ROUND_0_COLUMNS, c) for c in candidates]
+        rows = [_row_from_dict(ROUND_0_KEYS, {**c, "cv_yn": "Y"}) for c in candidates]
         written = _append_rows(sheet, "Round 0", rows, first_data_row=4)
         return {"written": written, "tab": "Round 0", "error": None}
     except gspread.exceptions.APIError as e:

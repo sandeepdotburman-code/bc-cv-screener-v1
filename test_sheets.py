@@ -1,35 +1,34 @@
 from sheets_writer import write_cv_pass_fail, write_round_0
 
 test_cv = [{
-    "Candidate": "Test Candidate",
-    "Experience Band": "0 months (Fresher)",
+    "Candidate":              "Test Candidate",
+    "Experience Band":        "0 months (Fresher)",
     "Experience (Pass/Fail)": "✅",
-    "Identity/Activity": "✅",
-    "External-Facing": "✅",
-    "CV Quality": "✅",
-    "Excellence Signal": "—",
-    "Decision": "PASS",
-    "Reason": "",
-    "Format": "PDF",
+    "Identity/Activity":      "✅",
+    "External-Facing":        "✅",
+    "CV Quality":             "✅",
+    "Excellence Signal":      "—",
+    "Decision":               "PASS",
+    "Reason":                 "",
+    "Format":                 "PDF",
 }]
 
 test_r0 = [{
-    "Name": "Test Candidate",
-    "CV (Y/N)": "Y",
-    "Experience (months + band)": "0 months (Fresher)",
-    "Internship/Part-time": "6 months — content writing internship",
-    "Current Role": "N/A",
-    "Industry": "N/A",
-    "Key Skills": "Coordination, follow-up",
-    "Current Location": "Mumbai",
-    "DOB": "N/A",
-    "UG Grad Year": "2025",
-    "PG Grad Year": "N/A",
-    "Email": "test@example.com",
-    "Phone": "N/A",
-    "Summary": "Fresh graduate with internship coordination experience.",
-    "Round 0 Pass/Fail": "PASS",
+    "candidate":            "Test Candidate",
+    "experience_band":      "0 months (Fresher)",
+    "internship_part_time": "6 months — content writing internship",
+    "current_role":         "N/A",
+    "industry":             "N/A",
+    "key_skills":           "Coordination, follow-up",
+    "current_location":     "Mumbai",
+    "dob":                  "N/A",
+    "ug_grad_year":         "2025",
+    "pg_grad_year":         "N/A",
+    "email":                "test@example.com",
+    "phone":                "N/A",
+    "summary":              "Fresh graduate with internship coordination experience.",
+    "decision":             "PASS",
 }]
 
-print(write_cv_pass_fail(test_cv))
-print(write_round_0(test_r0))
+print("CV Pass-Fail:", write_cv_pass_fail(test_cv))
+print("Round 0:     ", write_round_0(test_r0))
