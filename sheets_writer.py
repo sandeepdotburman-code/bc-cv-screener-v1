@@ -17,7 +17,7 @@ import streamlit as st
 # Sheet IDs — test vs live
 SHEET_IDS = {
     "test": "10jW5bqKiR-4HxWHcCA6MjALOBnvyEaYQcCNxDE2S9nc",  # BC PC Screener — Agent Test v1.0
-    "live": "LIVE_SHEET_ID_HERE",  # replace when live tracker is ready
+    "live": "1W64AHbbVCt2o9End4nOYWwwqc1e3oeMVC_w-jKenYRQ",  # replace when live tracker is ready
 }
 
 def _get_sheet_id() -> str:
