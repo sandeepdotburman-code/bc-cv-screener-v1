@@ -312,6 +312,10 @@ if run and uploaded_files:
         sheet_result = write_screening_results(all_cv_rows, passed_r0_rows)
         sheet_error = (sheet_result["cv_pass_fail"].get("error") or
                        sheet_result["round_0"].get("error"))
+        # DEBUG — remove after diagnosis
+        st.caption(f"DEBUG passed_r0_rows count: {len(passed_r0_rows)}")
+        st.caption(f"DEBUG cv_pass_fail write: {sheet_result['cv_pass_fail']}")
+        st.caption(f"DEBUG round_0 write: {sheet_result['round_0']}")
 
     # ── Summary ────────────────────────────────────────────────────────────────
 
