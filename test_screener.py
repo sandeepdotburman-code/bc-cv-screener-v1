@@ -6,7 +6,7 @@ print every field so we can verify the new extraction keys are populated.
 import tomllib
 import os
 from extractor import extract_text
-from screener import screen_cv
+from screener_claude import screen_cv
 
 # ── Load API key from secrets.toml ─────────────────────────────────────────────
 secrets_path = os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml")

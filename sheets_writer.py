@@ -160,12 +160,12 @@ def write_cv_pass_fail(candidates: list[dict]) -> dict:
     try:
         sheet = _get_sheet()
         rows = [_row_from_dict(CV_PASS_FAIL_COLUMNS, c) for c in candidates]
-        written = _append_rows(sheet, "CV Pass-Fail", rows, first_data_row=2)
-        return {"written": written, "tab": "CV Pass-Fail", "error": None}
+        written = _append_rows(sheet, "CV Pass-Fail: Claude", rows, first_data_row=4)
+        return {"written": written, "tab": "CV Pass-Fail: Claude", "error": None}
     except gspread.exceptions.APIError as e:
-        return {"written": 0, "tab": "CV Pass-Fail", "error": f"Sheets API error: {e}"}
+        return {"written": 0, "tab": "CV Pass-Fail: Claude", "error": f"Sheets API error: {e}"}
     except Exception as e:
-        return {"written": 0, "tab": "CV Pass-Fail", "error": str(e)}
+        return {"written": 0, "tab": "CV Pass-Fail: Claude", "error": str(e)}
 
 
 def write_round_0(candidates: list[dict]) -> dict:
@@ -182,33 +182,69 @@ def write_round_0(candidates: list[dict]) -> dict:
     try:
         sheet = _get_sheet()
         rows = [_row_from_dict(ROUND_0_KEYS, {**c, "cv_yn": "Y"}) for c in candidates]
-        written = _append_rows(sheet, "Round 0", rows, first_data_row=4)
-        return {"written": written, "tab": "Round 0", "error": None}
+        written = _append_rows(sheet, "Round 0: Claude", rows, first_data_row=4)
+        return {"written": written, "tab": "Round 0: Claude", "error": None}
     except gspread.exceptions.APIError as e:
-        return {"written": 0, "tab": "Round 0", "error": f"Sheets API error: {e}"}
+        return {"written": 0, "tab": "Round 0: Claude", "error": f"Sheets API error: {e}"}
     except Exception as e:
-        return {"written": 0, "tab": "Round 0", "error": str(e)}
+        return {"written": 0, "tab": "Round 0: Claude", "error": str(e)}
+
+
+def write_cv_pass_fail_gpt(candidates: list[dict]) -> dict:
+    """
+    Write one row per candidate to the 'CV Pass-Fail GPT' tab.
+    Identical structure to write_cv_pass_fail — different tab name only.
+    """
+    try:
+        sheet = _get_sheet()
+        rows = [_row_from_dict(CV_PASS_FAIL_COLUMNS, c) for c in candidates]
+        written = _append_rows(sheet, "CV Pass-Fail: GPT", rows, first_data_row=4)
+        return {"written": written, "tab": "CV Pass-Fail: GPT", "error": None}
+    except gspread.exceptions.APIError as e:
+        return {"written": 0, "tab": "CV Pass-Fail: GPT", "error": f"Sheets API error: {e}"}
+    except Exception as e:
+        return {"written": 0, "tab": "CV Pass-Fail: GPT", "error": str(e)}
+
+
+def write_round_0_gpt(candidates: list[dict]) -> dict:
+    """
+    Write one row per passed candidate to the 'Round 0 GPT' tab.
+    Identical structure to write_round_0 — different tab name only.
+    """
+    try:
+        sheet = _get_sheet()
+        rows = [_row_from_dict(ROUND_0_KEYS, {**c, "cv_yn": "Y"}) for c in candidates]
+        written = _append_rows(sheet, "Round 0: GPT", rows, first_data_row=4)
+        return {"written": written, "tab": "Round 0: GPT", "error": None}
+    except gspread.exceptions.APIError as e:
+        return {"written": 0, "tab": "Round 0: GPT", "error": f"Sheets API error: {e}"}
+    except Exception as e:
+        return {"written": 0, "tab": "Round 0: GPT", "error": str(e)}
 
 
 def write_screening_results(
     all_candidates: list[dict],
     passed_candidates: list[dict],
+    all_candidates_gpt: list[dict] = None,
+    passed_candidates_gpt: list[dict] = None,
 ) -> dict:
     """
-    Convenience function: writes both tabs in one call.
+    Convenience function: writes all four tabs in one call.
 
-    all_candidates  → CV Pass-Fail tab (all, including fails)
-    passed_candidates → Round 0 tab (passed only)
+    all_candidates    → CV Pass-Fail Claude + CV Pass-Fail GPT tabs
+    passed_candidates → Round 0 Claude + Round 0 GPT tabs
 
     Returns:
         {
-            "cv_pass_fail": {"written": int, "error": None | str},
-            "round_0":      {"written": int, "error": None | str},
+            "cv_pass_fail_claude": {"written": int, "error": None | str},
+            "round_0_claude":      {"written": int, "error": None | str},
+            "cv_pass_fail_gpt":    {"written": int, "error": None | str},
+            "round_0_gpt":         {"written": int, "error": None | str},
         }
     """
-    cv_result = write_cv_pass_fail(all_candidates)
-    r0_result = write_round_0(passed_candidates)
     return {
-        "cv_pass_fail": cv_result,
-        "round_0": r0_result,
+        "cv_pass_fail_claude": write_cv_pass_fail(all_candidates),
+        "round_0_claude":      write_round_0(passed_candidates),
+        "cv_pass_fail_gpt":    write_cv_pass_fail_gpt(all_candidates_gpt or []),
+        "round_0_gpt":         write_round_0_gpt(passed_candidates_gpt or []),
     }

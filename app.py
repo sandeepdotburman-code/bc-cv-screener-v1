@@ -10,7 +10,8 @@ import os
 from datetime import datetime
 
 from extractor import extract_text
-from screener import screen_cv
+from screener_claude import screen_cv
+from screener_gpt import screen_cv_gpt
 from sheets_writer import write_screening_results
 
 # ── Page config ────────────────────────────────────────────────────────────────
@@ -138,6 +139,12 @@ except Exception:
     st.error("ANTHROPIC_API_KEY not found in .streamlit/secrets.toml")
     st.stop()
 
+try:
+    openai_api_key = st.secrets["OPENAI_API_KEY"]
+except Exception:
+    st.error("OPENAI_API_KEY not found in .streamlit/secrets.toml")
+    st.stop()
+
 # ── Config row ─────────────────────────────────────────────────────────────────
 
 col1, col2, col3 = st.columns([2, 1, 1])
@@ -213,6 +220,8 @@ if run and uploaded_files:
 
     all_cv_rows = []
     passed_r0_rows = []
+    all_cv_rows_gpt = []
+    passed_r0_rows_gpt = []
     errors = []
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -293,6 +302,48 @@ if run and uploaded_files:
                         "type": "flag",
                     })
 
+                # ── GPT screening ──────────────────────────────────────────
+                gpt_result = screen_cv_gpt(
+                    cv_text=raw_text,
+                    filename=cv_name,
+                    screening_date=screening_date,
+                    role=role_key,
+                    api_key=openai_api_key,
+                )
+
+                gpt_cv_row = {
+                    "Candidate":              gpt_result.get("candidate", cv_name),
+                    "Experience Band":        gpt_result.get("experience_band", ""),
+                    "Experience (Pass/Fail)": gpt_result.get("experience_pf", ""),
+                    "Identity/Activity":      gpt_result.get("identity_activity", ""),
+                    "External-Facing":        gpt_result.get("external_facing", ""),
+                    "CV Quality":             gpt_result.get("cv_quality", ""),
+                    "Excellence Signal":      gpt_result.get("excellence_signal", "—"),
+                    "Decision":               gpt_result.get("decision", "FLAG"),
+                    "Reason":                 gpt_result.get("reason", ""),
+                    "Format":                 fmt,
+                }
+                all_cv_rows_gpt.append(gpt_cv_row)
+
+                if gpt_result.get("decision") == "PASS":
+                    gpt_r0_row = {
+                        "candidate":            gpt_result.get("candidate", cv_name),
+                        "experience_band":      gpt_result.get("experience_band", ""),
+                        "internship_part_time": gpt_result.get("internship_part_time", "N/A"),
+                        "current_role":         gpt_result.get("current_role", "N/A"),
+                        "industry":             gpt_result.get("industry", "N/A"),
+                        "key_skills":           gpt_result.get("key_skills", "N/A"),
+                        "current_location":     gpt_result.get("current_location", "N/A"),
+                        "dob":                  gpt_result.get("dob", "N/A"),
+                        "ug_grad_year":         gpt_result.get("ug_grad_year", "N/A"),
+                        "pg_grad_year":         gpt_result.get("pg_grad_year", "N/A"),
+                        "email":                gpt_result.get("email", "N/A"),
+                        "phone":                gpt_result.get("phone", "N/A"),
+                        "summary":              gpt_result.get("summary", "N/A"),
+                        "decision":             "PASS",
+                    }
+                    passed_r0_rows_gpt.append(gpt_r0_row)
+
             except Exception as e:
                 errors.append({
                     "file": cv_name,
@@ -309,9 +360,14 @@ if run and uploaded_files:
 
     sheet_error = None
     if all_cv_rows or passed_r0_rows:
-        sheet_result = write_screening_results(all_cv_rows, passed_r0_rows)
-        sheet_error = (sheet_result["cv_pass_fail"].get("error") or
-                       sheet_result["round_0"].get("error"))
+        sheet_result = write_screening_results(all_cv_rows, passed_r0_rows,
+                                               all_cv_rows_gpt, passed_r0_rows_gpt)
+        sheet_error = (
+            sheet_result["cv_pass_fail_claude"].get("error") or
+            sheet_result["round_0_claude"].get("error") or
+            sheet_result["cv_pass_fail_gpt"].get("error") or
+            sheet_result["round_0_gpt"].get("error")
+        )
 
     # ── Summary ────────────────────────────────────────────────────────────────
 

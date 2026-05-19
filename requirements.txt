@@ -7,3 +7,4 @@ anthropic
 pyyaml
 gspread
 google-auth
+openai
