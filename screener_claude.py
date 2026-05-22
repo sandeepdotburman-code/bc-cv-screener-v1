@@ -6,6 +6,7 @@ import anthropic
 import yaml
 import json
 import os
+import time
 
 # ── Load rubric ───────────────────────────────────────────────────────────────
 
@@ -82,14 +83,22 @@ Screen this CV against the rubric. Return ONLY a JSON object with exactly these 
 }}"""
 
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=2000,
-            messages=[
-                {"role": "user", "content": user_message}
-            ],
-            system=system_prompt
-        )
+        for attempt in range(4):  # 1 attempt + up to 3 retries
+            try:
+                message = client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=2000,
+                    messages=[
+                        {"role": "user", "content": user_message}
+                    ],
+                    system=system_prompt
+                )
+                break
+            except anthropic.APIStatusError as e:
+                if e.status_code == 529 and attempt < 3:
+                    time.sleep(5 * (2 ** attempt))  # 5 → 10 → 20 seconds
+                    continue
+                raise
 
         raw = message.content[0].text.strip()
 
